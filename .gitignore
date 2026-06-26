@@ -1,0 +1,4 @@
+.env
+.env.docker
+check-docker.sh
+node_modules/

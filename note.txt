@@ -1,0 +1,7 @@
+set up prisma
+
+npm install prisma --save-dev
+npm install @prisma/client
+
+  output   = "../src/generated/prisma" -> import { PrismaClient } from "../generated/prisma";
+  output   = "../generated/prisma" -> import { PrismaClient } from "@prisma/client";

@@ -1,0 +1,225 @@
+name: Auto Deploy Backend to VPS
+
+on:
+  push:
+    branches:
+      - dev  # ganti sesuai branch deploy kamu
+      
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+  integration_service:
+    runs-on: ubuntu-latest
+    environment: Development
+    needs: test
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: gym_be_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prootpass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      DATABASE_URL: mysql://root:rootpass@127.0.0.1:3307/gym_be_test
+      FE_URL: ${{ secrets.FE_URL }}
+      BE_URL: ${{ secrets.BE_URL }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -P 3307 -uroot -prootpass --silent; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations for test DB
+        run: npx prisma migrate deploy
+
+      - name: Run service integration tests
+        run: npm run test:integration:service
+
+  integration_http:
+    runs-on: ubuntu-latest
+    environment: Development
+    needs: integration_service
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: gym_be_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prootpass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      DATABASE_URL: mysql://root:rootpass@127.0.0.1:3307/gym_be_test
+      FE_URL: ${{ secrets.FE_URL }}
+      BE_URL: ${{ secrets.BE_URL }}
+      IS3_END_POINT: ${{ secrets.IS3_END_POINT }}
+      IS3_REGION: ${{ secrets.IS3_REGION }}
+      IS3_ACCESS_KEY_ID: ${{ secrets.IS3_ACCESS_KEY_ID }}
+      IS3_SECRET_ACCESS_KEY_ID: ${{ secrets.IS3_SECRET_ACCESS_KEY_ID }}
+      IS3_BUCKET_NAME: gym-test
+      IS3_PREFIX: ${{ secrets.IS3_PREFIX }}
+      MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY_TEST }}
+      FIREBASE_SERVICE_ACCOUNT_PATH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PATH }}
+      EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -P 3307 -uroot -prootpass --silent; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations for test DB
+        run: npx prisma migrate deploy
+
+      - name: Ensure MinIO test bucket exists
+        run: |
+          node - <<'NODE'
+          import { S3Client, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+          const client = new S3Client({
+            endpoint: process.env.IS3_END_POINT,
+            region: process.env.IS3_REGION,
+            forcePathStyle: true,
+            credentials: {
+              accessKeyId: process.env.IS3_ACCESS_KEY_ID,
+              secretAccessKey: process.env.IS3_SECRET_ACCESS_KEY_ID,
+            }
+          });
+          try {
+            await client.send(new HeadBucketCommand({ Bucket: process.env.IS3_BUCKET_NAME }));
+            console.log('Bucket already exists');
+          } catch {
+            await client.send(new CreateBucketCommand({ Bucket: process.env.IS3_BUCKET_NAME }));
+            console.log('Bucket created');
+          }
+          NODE
+
+      - name: Run HTTP integration tests
+        run: npm run test:integration:http
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Development
+    needs:
+      - test
+      - integration_service
+      - integration_http
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH to VPS
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          timeout: 60s
+          script: |
+            cd /opt/projects/chain_fit_be
+
+            # Ambil kode terbaru
+            git pull origin dev
+            git status
+            git remote -v
+            git branch -vv
+
+            # Build ulang image Docker
+            docker build --no-cache -t chain_fit_be .
+
+            # Stop & remove container lama kalau ada
+            docker stop chain_fit_be-server || true
+            docker rm chain_fit_be-server || true
+            # Run container baru dengan env & expose port
+            docker run -d \
+              --name chain_fit_be-server \
+              --network docker-db_db-network \
+              -p 4002:4002 \
+              -e DATABASE_URL="mysql://root:rootpass@mysql-container-webserver-xeron-a:3306/gym_be" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e PORT="${{ secrets.PORT }}" \
+              -e IS3_ACCESS_KEY_ID="${{ secrets.IS3_ACCESS_KEY_ID }}" \
+              -e IS3_BUCKET_NAME="${{ secrets.IS3_BUCKET_NAME }}" \
+              -e IS3_END_POINT="${{ secrets.IS3_END_POINT }}" \
+              -e IS3_PREFIX="${{ secrets.IS3_PREFIX }}" \
+              -e IS3_REGION="${{ secrets.IS3_REGION }}" \
+              -e EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
+              -e EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
+              -e IS3_SECRET_ACCESS_KEY_ID="${{ secrets.IS3_SECRET_ACCESS_KEY_ID }}" \
+              -e MIDTRANS_CLIENT_KEY="${{ secrets.MIDTRANS_CLIENT_KEY }}" \
+              -e MIDTRANS_IS_PRODUCTION="${{ secrets.MIDTRANS_IS_PRODUCTION }}" \
+              -e MIDTRANS_SERVER_KEY="${{ secrets.MIDTRANS_SERVER_KEY }}" \
+              -e URL_PATH_EQUIPMENT="${{ secrets.URL_PATH_EQUIPMENT }}" \
+              -e FIREBASE_SERVICE_ACCOUNT_PATH="${{ secrets.FIREBASE_SERVICE_ACCOUNT_PATH }}" \
+              -e FE_URL="${{secrets.FE_URL}}" \
+              --restart unless-stopped \
+              -e BE_URL="${{ secrets.BE_URL }}" \
+              chain_fit_be
+            docker exec -i chain_fit_be-server npx prisma migrate deploy
+            docker exec -i chain_fit_be-server npx prisma db seed
