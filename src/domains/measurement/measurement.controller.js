@@ -2,17 +2,24 @@ import { successResponse } from "../../utils/response.js";
 import MeasurementService from "./measurement.service.js";
 
 class MeasurementController {
-    async startMeasurement(req, res) {
+    async bindDevice(req, res) {
         const { deviceNumber } = req.body;
-        
-        const data = await MeasurementService.startMeasurement(req.user.id, deviceNumber);
+        const data = await MeasurementService.bindDevice(req.user.id, deviceNumber);
+        return successResponse(res, data);
+    }
+
+    async getMyDevice(req, res) {
+        const data = await MeasurementService.getMyDevice(req.user.id);
+        return successResponse(res, data);
+    }
+
+    async startMeasurement(req, res) {
+        const data = await MeasurementService.startMeasurement(req.user.id);
         return successResponse(res, data); 
     }
 
     async stopMeasurement(req, res) {
-        const { deviceNumber } = req.body;
-        
-        const data = await MeasurementService.stopMeasurement(req.user.id, deviceNumber);
+        const data = await MeasurementService.stopMeasurement(req.user.id);
         return successResponse(res, data); 
     }
     

@@ -1,17 +1,17 @@
 import prisma from "../../config/db.js";
 import BaseError from "../../base_classes/base-error.js";
 import axios from "axios";
+import { getIo } from "../../config/socket.js";
+import logger from "../../utils/logger.js";
 
 class IotService {
-    // Dipanggil oleh Jam Pintar untuk mengecek apakah ada user yang menekan tombol "Measure Now"
+    // Dipanggil oleh Jam Pintar untuk mengecek apakah ada perintah (Polling tiap 5 detik)
     async checkPendingTask(deviceNumber) {
-        const device = await prisma.device.findUnique({ where: { deviceNumber }});
-        if (!device) throw BaseError.notFound("Device not registered in system.");
-
-        // Heartbeat update (Tandai jam sedang online)
-        await prisma.device.update({
-            where: { id: device.id },
-            data: { status: "ONLINE", lastSeen: new Date() }
+        // Otomatis daftarkan/update status perangkat jika memanggil poll
+        const device = await prisma.device.upsert({
+            where: { deviceNumber },
+            update: { status: "ONLINE", lastSeen: new Date() },
+            create: { deviceNumber, status: "ONLINE", lastSeen: new Date() }
         });
 
         // Cari pengukuran IN_PROGRESS
@@ -23,9 +23,9 @@ class IotService {
         return { hasTask: !!pendingMeasure, measurementId: pendingMeasure?.id };
     }
 
-    // Dipanggil oleh Jam Pintar setelah selesai mengukur (Uplink PPG Data)
-    async submitData(deviceNumber, rawPpgData) {
-        const device = await prisma.device.findUnique({ where: { deviceNumber }});
+    // Dipanggil oleh Jam Pintar setelah mengumpulkan data 2 detik
+    async submitData(deviceNumber, rawPpgData, isFinished) {
+        const device = await prisma.device.findUnique({ where: { deviceNumber } });
         if (!device) throw BaseError.notFound("Device not registered");
 
         const activeMeasure = await prisma.measurement.findFirst({
@@ -33,21 +33,68 @@ class IotService {
             orderBy: { requestedAt: "desc" }
         });
 
-        if (!activeMeasure) throw BaseError.badRequest("Tidak ada sesi pengukuran aktif untuk jam ini.");
+        // Jika user sudah menekan STOP di HP, tapi jam masih ngirim data
+        if (!activeMeasure) {
+            return { status: "STOP", message: "No active measurement, stop sensor." };
+        }
 
-        // Analisis Algoritma dengan AI Eksternal
-        const isAfib = await this.detectAfibAlgorithm(rawPpgData);
+        // ==========================================
+        // 1. EMIT WEBSOCKET KE FRONTEND (REALTIME)
+        // ==========================================
+        const io = getIo();
+        if (io && rawPpgData && rawPpgData.length > 0) {
+            io.emit(`live_graph_${deviceNumber}`, rawPpgData);
+            logger.info(`[Socket] Emitted ${rawPpgData.length} data points to FE for device ${deviceNumber}`);
+        }
 
-        // Menggunakan Database Transaction (ACID) agar PpgResult, Measurement, dan Notification tersimpan sempurna
-        const result = await prisma.$transaction(async (tx) => {
-            const ppg = await tx.ppgResult.create({
-                data: {
-                    measurementId: activeMeasure.id,
-                    deviceId: device.id,
-                    rawPpgData: rawPpgData
-                }
+        // ==========================================
+        // 2. SIMPAN/APPEND DATA KE DATABASE (PpgResult)
+        // ==========================================
+        if (rawPpgData && rawPpgData.length > 0) {
+            // Cek apakah PpgResult sudah dibuat sebelumnya di sesi ini
+            const existingPpg = await prisma.ppgResult.findUnique({
+                where: { measurementId: activeMeasure.id }
             });
 
+            if (existingPpg) {
+                // Konversi dari JSON ke Array, gabungkan, simpan lagi
+                let currentArray = Array.isArray(existingPpg.rawPpgData) ? existingPpg.rawPpgData : [];
+                let newArray = currentArray.concat(rawPpgData);
+                
+                await prisma.ppgResult.update({
+                    where: { measurementId: activeMeasure.id },
+                    data: { rawPpgData: newArray }
+                });
+            } else {
+                // Buat PpgResult pertama kali
+                await prisma.ppgResult.create({
+                    data: {
+                        measurementId: activeMeasure.id,
+                        deviceId: device.id,
+                        rawPpgData: rawPpgData
+                    }
+                });
+            }
+        }
+
+        // ==========================================
+        // 3. JIKA BELUM SELESAI (isFinished = false)
+        // ==========================================
+        if (!isFinished) {
+            return { status: "CONTINUE" }; // Suruh jam lanjut ngukur 2 detik lagi
+        }
+
+        // ==========================================
+        // 4. JIKA SELESAI (isFinished = true) -> EKSEKUSI AI
+        // ==========================================
+        const finalPpg = await prisma.ppgResult.findUnique({ where: { measurementId: activeMeasure.id } });
+        const fullArray = finalPpg && Array.isArray(finalPpg.rawPpgData) ? finalPpg.rawPpgData : [];
+
+        // Lempar ke AI
+        const isAfib = await this.detectAfibAlgorithm(fullArray);
+
+        // Update database untuk menutup sesi
+        const result = await prisma.$transaction(async (tx) => {
             await tx.measurement.update({
                 where: { id: activeMeasure.id },
                 data: { status: "COMPLETED", completedAt: new Date() }
@@ -58,7 +105,7 @@ class IotService {
                     data: {
                         userId: activeMeasure.userId,
                         title: "Peringatan Medis!",
-                        message: "Sistem AI mendeteksi adanya indikasi pola Atrial Fibrillation (AF) dari pengukuran Anda. Harap segera periksakan diri ke dokter.",
+                        message: "Sistem AI mendeteksi adanya indikasi pola Atrial Fibrillation (AF).",
                         type: "AF_DETECTED"
                     }
                 });
@@ -67,13 +114,13 @@ class IotService {
                     data: {
                         userId: activeMeasure.userId,
                         title: "Pengukuran Selesai",
-                        message: "Hasil analisis detak jantung Anda berada dalam batas normal. Tetap jaga kesehatan!",
+                        message: "Hasil analisis detak jantung Anda berada dalam batas normal.",
                         type: "SYSTEM_INFO"
                     }
                 });
             }
 
-            return { ppgId: ppg.id, afibDetected: isAfib };
+            return { status: "STOP", message: "Measurement completed", afibDetected: isAfib, totalData: fullArray.length };
         });
 
         return result;
@@ -81,32 +128,11 @@ class IotService {
 
     async detectAfibAlgorithm(rawPpgData) {
         try {
-            // Setup Scaffolding API untuk AI
-            // NOTE: Uncomment blok di bawah ini jika endpoint AI sudah tersedia
-            
-            /*
-            const aiEndpoint = process.env.AI_SERVICE_URL || "http://localhost:5000/api/predict";
-            const response = await axios.post(aiEndpoint, {
-                data: rawPpgData // Payload body ke model AI Python
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000 // Timeout 10 detik agar sistem tidak hang jika AI lambat
-            });
-
-            // Asumsi AI mengembalikan { is_afib: boolean, confidence: number }
-            return response.data.is_afib === true;
-            */
-
-            // Untuk saat ini (Base Prototype): Selalu kembalikan normal (false)
+            // Untuk prototipe, return false
             return false;
-
         } catch (error) {
-            console.error("[AI Analysis Error]:", error.message);
-            // Fallback fail-safe: Jika AI mati, anggap normal dulu agar flow tidak putus, 
-            // atau bisa diset true jika butuh false-positive (tergantung kebutuhan medis).
-            return false; 
+            console.error("[AI Error]:", error.message);
+            return false;
         }
     }
 }

@@ -4,6 +4,9 @@ export const iotSubmitSchema = Joi.object({
     rawPpgData: Joi.array().required().messages({
         'any.required': 'rawPpgData is required in body payload',
         'array.base': 'rawPpgData must be an array'
+    }),
+    isFinished: Joi.boolean().optional().default(false).messages({
+        'boolean.base': 'isFinished must be a boolean (true/false)'
     })
 });
 

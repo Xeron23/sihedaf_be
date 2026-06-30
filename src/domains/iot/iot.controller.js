@@ -10,9 +10,9 @@ class IotController {
 
     async submitData(req, res) {
         const { deviceNumber } = req.params;
-        const { rawPpgData } = req.body;
+        const { rawPpgData, isFinished } = req.body;
         
-        const data = await IotService.submitData(deviceNumber, rawPpgData);
+        const data = await IotService.submitData(deviceNumber, rawPpgData, isFinished);
         return successResponse(res, data);
     }
 }

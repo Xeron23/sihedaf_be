@@ -48,10 +48,12 @@ model User {
   password     String
   profileImage String?
   role         Role        @default(USER)
+  deviceId     String?     @unique
 
   logins       SystemLog[]
   measurements Measurement[]
   notifications Notification[]
+  device       Device?     @relation(fields: [deviceId], references: [id])
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -63,6 +65,7 @@ model Device {
   status       DeviceStatus @default(OFFLINE)
   lastSeen     DateTime?
 
+  user         User?
   measurements Measurement[]
   ppgResults   PpgResult[]
 

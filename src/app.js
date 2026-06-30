@@ -118,7 +118,7 @@ class ExpressApplication {
             const server = http.createServer(this.app);
 
             initSocket(server);
-            initMqtt();
+            // initMqtt(); // Disabled since migration to pure HTTP Polling
 
             server.listen(this.port, () => {
                 logger.info(`🚀 Server running on port ${this.port}`);

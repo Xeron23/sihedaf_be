@@ -2,6 +2,7 @@ import mqtt from "mqtt";
 import logger from "../utils/logger.js";
 import IotService from "../domains/iot/iot.service.js";
 import { getIo } from "./socket.js";
+import prisma from "./db.js";
 
 // Buffer dictionary to store streaming data
 // Format: { [deviceNumber]: { chunks: [], lastReceived: null } }
@@ -11,7 +12,11 @@ let mqttClient = null;
 
 export function initMqtt() {
     const brokerUrl = process.env.MQTT_BROKER_URL || "mqtt://localhost:1883";
-    mqttClient = mqtt.connect(brokerUrl);
+    const options = {
+        username: process.env.MQTT_USERNAME || "iot_admin",
+        password: process.env.MQTT_PASSWORD || "sihedaf"
+    };
+    mqttClient = mqtt.connect(brokerUrl, options);
 
     mqttClient.on("connect", () => {
         logger.info(`✅ Connected to MQTT Broker at ${brokerUrl}`);
@@ -22,7 +27,7 @@ export function initMqtt() {
             else logger.info("✅ Subscribed to topic: watch/+/stream");
         });
         
-        // Topic for hardware status (e.g. "FINISHED")
+        // Topic for hardware status (e.g. "FINISHED", "ONLINE")
         mqttClient.subscribe("watch/+/status", (err) => {
             if (err) logger.error("MQTT Subscribe Error:", err);
         });
@@ -52,7 +57,17 @@ export function initMqtt() {
             } 
             else if (action === "status") {
                 const statusStr = message.toString();
-                if (statusStr === "FINISHED") {
+                
+                if (statusStr === "ONLINE") {
+                    // Daftarkan otomatis saat jam pertama kali konek
+                    await prisma.device.upsert({
+                        where: { deviceNumber: deviceNumber },
+                        update: { status: "ONLINE", lastSeen: new Date() },
+                        create: { deviceNumber: deviceNumber, status: "ONLINE", lastSeen: new Date() }
+                    });
+                    logger.info(`[MQTT] Device ${deviceNumber} is ONLINE`);
+                }
+                else if (statusStr === "FINISHED") {
                     logger.info(`[MQTT] Received FINISHED from ${deviceNumber}`);
                     
                     if (deviceBuffers[deviceNumber] && deviceBuffers[deviceNumber].chunks.length > 0) {
