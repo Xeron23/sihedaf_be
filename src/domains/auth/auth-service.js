@@ -124,7 +124,7 @@ class AuthService {
         }
         });
 
-        return { user: { id:u.id, fullname:u.fullname, email:u.email, role:u.role, profileImage:u.profileImage,  } };
+        return { user: { id:u.id, fullname:u.fullname, email:u.email, profileImage:u.profileImage,  } };
     }
 
     /**
