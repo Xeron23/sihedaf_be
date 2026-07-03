@@ -3,7 +3,8 @@ name: Auto Deploy Backend to VPS
 on:
   push:
     branches:
-      - main  # Ganti jadi main sesuai standar awal
+      - main
+      - dev
 
 jobs:
   test:
@@ -45,8 +46,15 @@ jobs:
           script: |
             cd /opt/projects/sihedaf_be
 
+            # Set branch to pull based on github actions environment
+            CURRENT_BRANCH="${{ github.ref_name }}"
+            
+            # Checkout to the branch being pushed
+            git fetch origin
+            git checkout $CURRENT_BRANCH
+            
             # Ambil kode terbaru
-            git pull origin main
+            git pull origin $CURRENT_BRANCH
 
             # Build ulang image Docker
             docker build -t sihedaf_be .
@@ -63,9 +71,6 @@ jobs:
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               -e PORT="${{ secrets.PORT }}" \
-              -e MQTT_BROKER_URL="${{ secrets.MQTT_BROKER_URL }}" \
-              -e MQTT_USERNAME="${{ secrets.MQTT_USERNAME }}" \
-              -e MQTT_PASSWORD="${{ secrets.MQTT_PASSWORD }}" \
               --restart unless-stopped \
               sihedaf_be
 
