@@ -39,6 +39,7 @@ export const errorHandler = async(err, req, res, _next) => {
         data: null,
         errors: {
             name: err.errorName,
+            message: err.message,
             validation: null
         },
         });
@@ -77,7 +78,8 @@ export const errorHandler = async(err, req, res, _next) => {
 
 
     return res.status(StatusCodes.INTERNAL_SERVER.code).json({
-        code: 500,
+        message: err.message,
+        validation: null
         status: StatusCodes.INTERNAL_SERVER.message,
         recordsTotal: 0,
         data: null,
