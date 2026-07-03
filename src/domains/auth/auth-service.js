@@ -17,21 +17,16 @@ class AuthService {
      * @returns {Object} - Access and refresh tokens upon successful login
      * @throws {BaseError} - If credentials are invalid
      */
-    async login(username, password) {
+    async login(email, password) {
         let user = await prisma.user.findFirst({
             where: {
-                username: username
+                email: email
             }
         });
-        if(!user){
-            user = await prisma.user.findFirst({
-                where: {
-                    email: username
-                }
-            });
-            if (!user) {
-                throw BaseError.badRequest("Invalid credentials");
-            }
+
+        if (!user) {
+            throw BaseError.notFound("User not found");
+
         }
 
         const isMatch = await matchPassword(password, user.password);
@@ -61,11 +56,11 @@ class AuthService {
 
         const user = await prisma.user.findFirst({
             where: {
-                username: username
+                email: username
             }
         });
         if (!user) {
-            throw BaseError.badRequest("Invalid credentials"); // atau notFound bila ingin 404
+            throw BaseError.notFound("User not found");
         }
 
         const accessToken = generateToken({ id: user.id, account_type: user.role }, "1d");
@@ -87,27 +82,12 @@ class AuthService {
             }
         });
 
-        const usernameExist = await prisma.user.findUnique({
-            where: {
-                username: data.username,
-            }
-        })
-
-        if (emailExist || usernameExist) {
+        if (emailExist) {
             let validation = "";
             let stack = [];
 
-            if (usernameExist) {
-                validation = "Username already taken.";
-
-                stack.push({
-                    message: "Username already taken.",
-                    path: ["username"]
-                });
-            }
-
             if (emailExist) {
-                validation += "Email already taken.";
+                validation = "Email already taken.";
 
                 stack.push({
                     message: "Email already taken.",
@@ -140,11 +120,11 @@ class AuthService {
         const u = await prisma.user.findUnique({
         where: { id: id },
         select: {
-            id: true, username: true, email: true, role: true, profileImage: true, name: true
+            id: true, fullname: true, email: true, role: true, profileImage: true
         }
         });
 
-        return { user: { id:u.id, username:u.username, email:u.email, role:u.role, profileImage:u.profileImage, name: u.name } };
+        return { user: { id:u.id, fullname:u.fullname, email:u.email, role:u.role, profileImage:u.profileImage,  } };
     }
 
     /**
@@ -166,21 +146,6 @@ class AuthService {
         if (!user) {
             throw BaseError.notFound("User not found");
         }
-        if(data.username){
-            const usernameExist = await prisma.user.findUnique({
-                where: {
-                    username: data.username
-                }
-            });
-            if (usernameExist && usernameExist.id != user.id) {
-                let validation = "Username already taken.";
-                let message = {
-                        message: "Username already taken.",
-                        path: ["username"]
-                };
-                throw new joi.ValidationError(validation, message);
-            }
-        }
 
 
         if(imgProfile){
@@ -201,7 +166,7 @@ class AuthService {
             select: {
                 id: true,
                 email: true,
-                name: true
+                fullname: true
             }
         });
 
@@ -223,6 +188,7 @@ class AuthService {
                 id: id
             }
         })
+
 
         if (!user) {
             throw BaseError.notFound("User not found");
@@ -292,7 +258,7 @@ class AuthService {
                 email: email
             },
             select: {
-                name: true,
+                fullname: true,
                 id: true,
                 email: true,
                 role: true
@@ -335,14 +301,12 @@ class AuthService {
                 id: decoded.id
             },
             select: {
-                name: true,
+                fullname: true,
                 id: true,
                 email: true,
                 role: true
             }
         });
-        
-
         if (!user) {
             return { status: 400, message: "User Not Found" }
         }
