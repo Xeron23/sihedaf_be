@@ -23,7 +23,6 @@ export const errorHandler = async(err, req, res, _next) => {
             data: null,
             errors: {
                 name: err.name,
-                message: err.message,
                 validation: errorObj,
             },
         });
@@ -40,7 +39,6 @@ export const errorHandler = async(err, req, res, _next) => {
         data: null,
         errors: {
             name: err.errorName,
-            message: err.message,
             validation: null
         },
         });
@@ -85,7 +83,6 @@ export const errorHandler = async(err, req, res, _next) => {
         data: null,
         errors: {
         name: err.name,
-        message: err.message,
         validation: null
         },
     });
