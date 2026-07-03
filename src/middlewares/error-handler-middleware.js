@@ -78,15 +78,14 @@ export const errorHandler = async(err, req, res, _next) => {
 
 
     return res.status(StatusCodes.INTERNAL_SERVER.code).json({
-        message: err.message,
-        validation: null
         status: StatusCodes.INTERNAL_SERVER.message,
         recordsTotal: 0,
         data: null,
         errors: {
         name: err.name,
+        message: err.message,
         validation: null
-        },
+        }
     });
 };
 
