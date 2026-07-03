@@ -1,0 +1,59 @@
+
+> express-be-template@1.0.0 dev
+> cross-env NODE_ENV=development && nodemon src/server.js
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-26 05:20:18 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-26 12:33:46 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-26 12:33:46 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:17:36 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:17:36 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:17:36 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:17:42 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:17:42 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:17:42 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:17:55 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:17:55 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:17:55 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:18:00 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:18:00 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:18:00 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:18:17 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:18:17 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:18:17 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:18:28 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:18:28 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:18:28 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:19:29 [32minfo[39m: 🚀 Server running on port 4005
+2026-06-30 12:19:29 [32minfo[39m: ✅ Connected to MQTT Broker at mqtt://localhost:1883
+2026-06-30 12:19:29 [32minfo[39m: ✅ Subscribed to topic: watch/+/stream
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:19:50 [32minfo[39m: 🚀 Server running on port 4005
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:25:36 [32minfo[39m: 🚀 Server running on port 4005
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:27:30 [32minfo[39m: 🚀 Server running on port 4005
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+2026-06-30 12:27:34 [32minfo[39m: 🚀 Server running on port 4005

@@ -1,0 +1,88 @@
+======================================================================
+HANDBOOK INTEGRASI IOT (JAM PINTAR) - SIHEDAF
+Koneksi: Murni HTTP REST (Aman dari Blokir Firewall Rumah Sakit)
+Base URL: https://testing-server.xianly.cloud/api/v1/iot
+======================================================================
+
+
+FLOW KERJA JAM PINTAR (STATE MACHINE)
+
+Jam pintar memiliki 3 State utama:
+1. IDLE (Menunggu Perintah)
+2. MEASURING & SUBMITTING (Merekam & Mengirim Data secara Pararel)
+3. STOP/FINISH (Selesai Pengukuran)
+
+----------------------------------------------------------------------
+TAHAP 1: POLLING (STATE IDLE)
+----------------------------------------------------------------------
+Saat jam dinyalakan, jam harus melakukan HTTP GET berulang (Polling) 
+setiap 5 DETIK SEKALI ke server untuk mengecek apakah dokter/pasien 
+menekan tombol "Mulai Pengukuran" di aplikasi HP.
+
+Method  : GET
+URL     : /device/<MAC_ADDRESS_JAM>/poll
+Contoh  : /device/A1B2C3D4E5F6/poll
+Header  : Connection: keep-alive
+
+Response Server:
+a. Jika BELUM ada perintah:
+   { "code": 200, "data": { "hasTask": false } }
+   -> Aksi Jam: Tetap diam (Tidur), ulangi GET 5 detik lagi.
+
+b. Jika ADA perintah:
+   { "code": 200, "data": { "hasTask": true, "measurementId": 123 } }
+   -> Aksi Jam: Pindah ke Tahap 2 (Mulai Mengukur).
+
+----------------------------------------------------------------------
+TAHAP 2: MEASURING & SUBMITTING (PENGIRIMAN PER 2 DETIK)
+----------------------------------------------------------------------
+Pada tahap ini, durasi maksimal pengukuran adalah 3 MENIT (180 Detik).
+Agar data di HP terlihat Real-Time dan server tidak berat, data 
+harus dikirim SECARA BERKALA SETIAP 2 DETIK SEKALI.
+
+1. Nyalakan sensor PPG/Jantung (Kecepatan sensor ideal: 50 Hz).
+2. Tampung data di RAM Jam selama 2 Detik (Terkumpul sekitar 100 data).
+3. Di kelipatan 2 Detik, kirim data tersebut ke server tanpa mematikan 
+   sensor (Asynchronous).
+
+Method  : POST
+URL     : /device/<MAC_ADDRESS_JAM>/submit
+Headers : Content-Type: application/json
+          Connection: keep-alive
+
+Body Payload (JSON):
+{
+    "rawPpgData": [502, 503, 505, 510, 520, ... 100 Data ... ]
+}
+
+Response Server:
+{
+    "code": 200,
+    "status": "OK",
+    "data": { "status": "CONTINUE" } 
+}
+
+Aksi Jam berdasarkan Response Server:
+- Jika "CONTINUE": Lanjut rekam sensor untuk 2 detik berikutnya, 
+  lalu post lagi. Terus berulang sampai total durasi genap 3 Menit.
+- Jika "STOP" (User menekan tombol berhenti di HP sebelum 3 menit): 
+  Langsung matikan sensor, hapus sisa RAM, dan kembali ke TAHAP 1.
+
+----------------------------------------------------------------------
+TAHAP 3: SELESAI PENGUKURAN (FINISH)
+----------------------------------------------------------------------
+Jika jam sudah merekam dan mengirim (Submit) terus-menerus selama 
+total 3 Menit penuh:
+1. Matikan sensor PPG.
+2. Kirim payload kosong untuk memberitahu server bahwa tugas selesai:
+   POST /device/<MAC_ADDRESS_JAM>/submit
+   Body: { "rawPpgData": [], "isFinished": true }
+3. Kembali ke TAHAP 1 (Mode Polling IDLE setiap 5 detik).
+
+----------------------------------------------------------------------
+CATATAN PENTING:
+- Ganti <MAC_ADDRESS_JAM> dengan MAC Address perangkat (tanpa tanda 
+  hubung/titik dua). Contoh: A1B2C3D4E5F6
+- Menggunakan header "Connection: keep-alive" sangat direkomendasikan 
+  untuk menghemat baterai jam pintar selama proses POST per 2 detik.
+======================================================================
