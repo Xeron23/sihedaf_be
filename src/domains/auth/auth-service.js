@@ -120,6 +120,12 @@ class AuthService {
         const u = await prisma.user.findUnique({
         where: { id: id },
         select: {
+            device: {
+                select: {
+                    id: true,
+                    deviceNumber: true,
+                }
+            },
             id: true, fullname: true, email: true, role: true, profileImage: true
         }
         });
