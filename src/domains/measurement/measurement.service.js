@@ -9,11 +9,11 @@ class MeasurementService {
         let device = await prisma.device.findUnique({ where: { deviceNumber }});
         
         if (!device) {
-            throw BaseError.badRequest("Perangkat belum terhubung ke sistem. Pastikan jam sudah menyala dan berkedip.");
+            throw BaseError.badRequest("Device not connected to the system. Ensure the watch is turned on.");
         }
 
         if (device.status === "OFFLINE") {
-            throw BaseError.badRequest("Perangkat terdeteksi offline. Pastikan jam menyala sebelum didaftarkan.");
+            throw BaseError.badRequest("Device is offline. Please turn on the watch before binding.");
         }
 
         // Cek apakah jam sudah dipakai orang lain
@@ -24,7 +24,7 @@ class MeasurementService {
         // merebut jam milik akun A.
         if (existingUser && existingUser.id !== userId) {
             // Nanti kalau production, UNCOMMENT line di bawah ini:
-            // throw BaseError.badRequest("Perangkat ini sudah didaftarkan oleh akun lain.");
+            // throw BaseError.badRequest("This device is already registered by another account.");
         }
 
         // Bind device ke User
@@ -33,7 +33,7 @@ class MeasurementService {
             data: { deviceId: device.id }
         });
 
-        return { message: "Perangkat berhasil dihubungkan ke akun Anda." };
+        return { message: "Device successfully bound to your account." };
     }
 
     async getMyDevice(userId) {
@@ -48,7 +48,7 @@ class MeasurementService {
         // 1. Ambil device yang ter-bind di akun ini
         const user = await prisma.user.findUnique({ where: { id: userId }, include: { device: true }});
         if (!user || !user.deviceId) {
-            throw BaseError.badRequest("Anda belum menghubungkan perangkat jam. Silakan daftarkan perangkat terlebih dahulu.");
+            throw BaseError.badRequest("You have not bound any watch device. Please register a device first.");
         }
 
         const device = user.device;
@@ -81,7 +81,7 @@ class MeasurementService {
     async stopMeasurement(userId) {
         const user = await prisma.user.findUnique({ where: { id: userId }, include: { device: true }});
         if (!user || !user.deviceId) {
-            throw BaseError.badRequest("Tidak ada perangkat yang terhubung.");
+            throw BaseError.badRequest("No device connected to your account.");
         }
 
         const device = user.device;
@@ -92,7 +92,7 @@ class MeasurementService {
         });
 
         if (!activeMeasure) {
-            throw BaseError.badRequest("Anda tidak sedang melakukan pengukuran.");
+            throw BaseError.badRequest("You do not have any active measurement session.");
         }
 
         // Hapus (Cancel) secara silent di DB. Nanti jam akan mendapat balasan { status: "STOP" } pas dia kirim cicilan berikutnya.

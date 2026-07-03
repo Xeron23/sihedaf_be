@@ -104,8 +104,8 @@ class IotService {
                 await tx.notification.create({
                     data: {
                         userId: activeMeasure.userId,
-                        title: "Peringatan Medis!",
-                        message: "Sistem AI mendeteksi adanya indikasi pola Atrial Fibrillation (AF).",
+                        title: "Medical Alert!",
+                        message: "AI system detected an indication of Atrial Fibrillation (AF) pattern.",
                         type: "AF_DETECTED"
                     }
                 });
@@ -113,8 +113,8 @@ class IotService {
                 await tx.notification.create({
                     data: {
                         userId: activeMeasure.userId,
-                        title: "Pengukuran Selesai",
-                        message: "Hasil analisis detak jantung Anda berada dalam batas normal.",
+                        title: "Measurement Completed",
+                        message: "Your heart rate analysis result is within normal limits.",
                         type: "SYSTEM_INFO"
                     }
                 });

@@ -1,158 +1,118 @@
 # Sihedaf Backend
 
-Backend API untuk aplikasi Sihedaf (Sistem Kesehatan Berbasis IoT). Project ini dibangun dengan **Express 5**, **Prisma**, dan **MySQL**, serta terintegrasi dengan **MQTT** untuk streaming data real-time dari smartwatch IoT dan **Firebase Cloud Messaging (FCM)** untuk notifikasi push.
-
-## Fitur Utama
-
-- **Authentication & Authorization**
-  - Register, Login, Logout pengguna.
-  - JWT Token based authentication.
-- **IoT & Measurement**
-  - Integrasi MQTT Broker (Mosquitto) untuk komunikasi *real-time* dua arah antara aplikasi dan smartwatch.
-  - Streaming pengukuran *Heart Rate* (Detak Jantung) dan *Blood Oxygen* (Saturasi Oksigen/SpO2).
-  - Menyimpan hasil pengukuran akhir ke database (MySQL).
-- **Notification**
-  - Push notification menggunakan Firebase Cloud Messaging (FCM).
-  - Manajemen FCM token untuk pengguna (update token, delete token saat logout).
+Sistem Backend API untuk aplikasi **Sihedaf** (Sistem Kesehatan Pintar Berbasis IoT). Dibangun menggunakan **Express 5**, **Prisma**, dan **MySQL**. Repositori ini bertanggung jawab untuk menangani Autentikasi Pengguna, Integrasi Hardware IoT (Jam Pintar), Analisis Data Medis (Deteksi AFib), dan Notifikasi *In-App*.
 
 ---
 
-## Tech Stack
+## 🚀 Fitur Utama
+
+- **Authentication & Authorization**
+  - Register, Login, Profil User.
+  - Autentikasi berbasis *JWT Token* (Access & Refresh Token).
+- **IoT & Measurement (HTTP State Machine)**
+  - Komunikasi Jam Pintar berbasis *HTTP Polling* (Hemat Baterai & Bebas Blokir Firewall RS).
+  - Perekaman sinyal PPG (*Photoplethysmography*) secara bertahap / *Append Chunk*.
+  - Skenario pembatalan *(Interruption)* secara *Real-time*.
+  - *Broadcast WebSocket* ke sisi Frontend/Mobile untuk menampilkan Grafik *Live*.
+- **Medical AI Integration (Placeholder)**
+  - Meneruskan 180 detik *Dataset* utuh ke modul AI untuk analisis *Atrial Fibrillation (AF)*.
+- **In-App Notification**
+  - Penyampaian status hasil pengukuran (Normal / Peringatan Medis) ke Database Notifikasi *real-time*.
+
+---
+
+## 🛠 Tech Stack
 
 - **Runtime**: Node.js 24
 - **Framework**: Express 5
-- **Database**: MySQL
+- **Database**: MySQL 8.4
 - **ORM**: Prisma
 - **Validation**: Joi
 - **Auth**: JWT + bcrypt
-- **IoT / Streaming**: MQTT (Mosquitto Broker via Cloudflare Tunnel)
-- **Push Notification**: Firebase Admin SDK
-- **Testing**: Jest + Supertest
+- **Real-Time Graph**: Socket.io
+- **CI/CD**: GitHub Actions & Docker
 
 ---
 
-## Project Structure
+## 📂 Project Structure
+
+Arsitektur aplikasi ini menggunakan pendekatan **Domain-Driven Design (Layered)** untuk kemudahan pemeliharaan:
 
 ```bash
 src/
-  app.js
-  server.js
-  base_classes/
-  config/
-    cors.js
-    db.js
-    firebase.js
-    mqtt.js
-    socket.js
-  domains/
-    auth/
-    iot/
-    measurement/
-    notification/
-  middlewares/
-  utils/
+  app.js                 # Entry point Express
+  server.js              # Entry point Server
+  base_classes/          # Template Base Controller & Route
+  config/                # Setup Database & Socket.io
+  domains/               # Modul Utama (Domain)
+    auth/                # Logic Autentikasi User
+    iot/                 # Logic Polling & Submit dari Hardware Jam
+    measurement/         # Logic Pasien (Bind, Start, Stop)
+    notification/        # Logic Alert & Riwayat
+  middlewares/           # Interceptor (Global Error, JWT Check)
+  utils/                 # Helper Functions (Response, dll)
 prisma/
-  schema.prisma
-  seed.js
+  schema.prisma          # Skema Tabel MySQL
 ```
 
 ---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
-Minimal environment yang perlu disiapkan:
+Minimal environment yang perlu disiapkan di `.env`:
 
 ```env
-PORT=4003
+PORT=4004
 NODE_ENV=development
 
 # Database Configuration
-DATABASE_URL=mysql://root:password@localhost:3306/sihedaf_db
+DATABASE_URL=mysql://<user>:<password>@<host>:<port>/sihedaf_be
 
 # JWT Configuration
-JWT_SECRET=your_jwt_secret
-
-# MQTT Configuration
-MQTT_BROKER_URL=wss://iot-broker.xianly.cloud
-MQTT_USERNAME=your_mqtt_user
-MQTT_PASSWORD=your_mqtt_password
-
-# Firebase Configuration
-FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/your/firebase-adminsdk.json
+JWT_SECRET=your_super_secret_jwt_key
 
 # URLs
 FE_URL=http://localhost:3000
-BE_URL=http://localhost:4003
+BE_URL=http://localhost:4004
 ```
 
-> **Catatan**: Jika mendeploy dengan Docker, pastikan environment path (seperti Firebase path) sesuai dengan mounting volume di container.
+> **Catatan Docker**: Jika mendeploy menggunakan GitHub Actions, koneksi *database* secara internal memanggil nama *container* (misal: `mysql://root:pass@mysql-container:3306/sihedaf_be`).
 
 ---
 
-## Installation
+## 📡 IoT Architecture (HTTP REST)
+
+Sistem lama yang menggunakan MQTT telah digantikan dengan **Murni HTTP REST** menggunakan metode *State Machine*. Alur ini menjamin stabilitas koneksi di lingkungan rumah sakit.
+
+1. **State 1 (IDLE):** Jam Pintar mengirim `GET /api/v1/iot/device/<MAC>/poll` setiap 5 detik untuk mengecek tugas.
+2. **State 2 (MEASURING):** Jika Web mengirimkan perintah `START`, respons Polling akan berubah. Jam langsung menyalakan sensor.
+3. **State 3 (SUBMITTING):** Jam mengirim cicilan data PPG (`POST /submit`) setiap **2 detik**.
+4. **State 4 (FINISH / STOP):** Setelah genap 3 menit, Jam mengirim flag `isFinished: true`. Backend menyatukan seluruh dataset dan mengeksekusi model AI.
+
+📚 **Panduan Lengkap untuk Firmware Engineer:** Silakan merujuk pada dokumen [`IoT_HTTP_Handbook_Updated.txt`](./IoT_HTTP_Handbook_Updated.txt) di root repositori.
+
+---
+
+## 📦 Instalasi & Menjalankan (Lokal)
 
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### Generate Prisma Client
-```bash
+# 2. Generate Prisma Client
 npx prisma generate
-```
 
-### Run Migration
-```bash
-npx prisma migrate deploy
-```
+# 3. Sinkronisasi Database
+npx prisma db push
 
----
-
-## Running the App
-
-### Development Mode
-```bash
+# 4. Jalankan Server
 npm run dev
 ```
 
-### Production Mode
-```bash
-npm start
-```
-
 ---
 
-## MQTT Architecture (IoT Handoff)
+## 🚀 CI/CD Pipeline (GitHub Actions)
 
-Aplikasi ini menggunakan sistem "Idle Connection" untuk efisiensi baterai pada *smartwatch*.
-
-1. **Watch to Backend (Idle):** Watch selalu terhubung ke broker, tapi tidak mengirim data apapun (idle).
-2. **App Trigger:** HTTP API mem-publish pesan ke topik `/watch/trigger` (`START` atau `STOP`).
-3. **Streaming:** Jika menerima `START`, smartwatch mulai mengirimkan data *heart rate* & *blood oxygen* secara kontinyu ke `/watch/stream`.
-4. **Backend Processing:** Backend mendengarkan `/watch/stream` via MQTT subscriber internal.
-5. **Final Save:** Saat trigger `STOP` dikirim, hasil akhir (*Summary*) disimpan ke database melalui *domain Measurement*.
-
-Untuk panduan lengkap integrasi hardware, silakan merujuk ke file `IOT_HANDBOOK.txt` di root repository.
-
----
-
-## CI/CD Pipeline
-
-Pipeline otomatis dengan **GitHub Actions** (`deploy.yaml`):
-1. **Test Job**: Menjalankan *unit test* dan mengecek dependency.
-2. **Deploy Job**: Jika test berhasil, GitHub Action akan melakukan remote SSH ke VPS.
-3. VPS melakukan Git Pull, membuild ulang Docker Image, lalu restart Docker Container dengan mem-passing secret credentials terbaru.
-
----
-
-## Useful Commands
-
-```bash
-# generate prisma client
-npx prisma generate
-
-# migrate database
-npx prisma migrate deploy
-
-# run unit tests
-npm test
-```
+Repositori ini telah terintegrasi dengan Pipeline otomatis yang tertanam di `.github/workflows/deploy.yaml`. 
+- Setiap kali Anda melakukan `git push` atau `merge` ke *branch* `dev` (atau `main`), GitHub Actions akan terpicu.
+- Action akan masuk (SSH) ke dalam VPS Server, menarik kode terbaru, membangun ulang *image* Docker, dan menyalakan kontainer secara otomatis di *background*.
