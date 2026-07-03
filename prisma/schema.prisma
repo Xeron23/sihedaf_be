@@ -36,7 +36,7 @@ model SystemLog {
   device      String
   action      String
   method      String
-  description String
+  description String @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

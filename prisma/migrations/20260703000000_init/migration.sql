@@ -6,7 +6,7 @@ CREATE TABLE `SystemLog` (
     `device` VARCHAR(191) NOT NULL,
     `action` VARCHAR(191) NOT NULL,
     `method` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NOT NULL,
+    `description` TEXT NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
