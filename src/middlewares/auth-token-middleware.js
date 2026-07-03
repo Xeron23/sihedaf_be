@@ -24,9 +24,8 @@ class AuthMiddleware {
         try {
             
             const decoded = jwt.verify(token, this.JWT_SECRET);
-
-            if(!decoded ||!decoded.id.id || !decoded.id.account_type || !(decoded.id.account_type === "OWNER" || decoded.id.account_type ==="PENJAGA" || decoded.id.account_type ==="MEMBER" ||  decoded.id.account_type === "ADMIN")){
-                return next(BaseError(401, statusCodes.UNAUTHORIZED.message, 'UNAUTHORIZED','Invalid Token'))
+            if(!decoded || !decoded.id || !decoded.id.id || !decoded.id.account_type || !(decoded.id.account_type === "USER" || decoded.id.account_type === "ADMIN")) {
+                return next(new BaseError(401, statusCodes.UNAUTHORIZED.message, "UNAUTHORIZED", "Invalid Token"));
             }
 
             const user = await prisma.user.findUnique({
@@ -34,8 +33,7 @@ class AuthMiddleware {
                     id: decoded.id.id
                 },
                 select: {
-                    name: true,
-                    username: true,
+                    fullname: true,
                     role: true,
                     id: true
                 }
