@@ -1,5 +1,5 @@
 import BaseError from "../../base_classes/base-error.js";
-import { generateVerifEmail } from "../../utils/bodyEmail.js";
+import { generateVerifEmail, generateResetPasswordEmail } from "../../utils/bodyEmail.js";
 import sendEmail from "../../utils/sendEmail.js";
 import { parseJWT, generateToken } from "../../utils/jwtTokenConfig.js";
 import joi from "joi";
@@ -278,12 +278,12 @@ class AuthService {
             const verificationLink = `${process.env.BE_URL}/api/v1/auth/verify-reset-password/${token}`;
             console.log("link: ", verificationLink);
         
-        const emailHtml = generateVerifEmail(verificationLink);
+        const emailHtml = generateResetPasswordEmail(verificationLink);
 
         sendEmail(
                 user.email,
-                "Reset password dari Mou: Journaling",
-                "Silankah mengklik link di bawah",
+                "Reset Password - Sihedaf",
+                "Silahkan klik link di bawah untuk mereset password Anda",
                 emailHtml
         );
 

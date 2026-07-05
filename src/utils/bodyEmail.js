@@ -167,8 +167,61 @@ function generateVerifEmail(verificationUrl) {
     `;
 }
 
+function generateResetPasswordEmail(resetUrl) {
+    return `
+      <!DOCTYPE html>
+      <html lang="id">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Reset Password</title>
+              <style>
+                  body {
+                      font-family: 'Roboto', sans-serif;
+                      background-color: #e3f2fd;
+                      text-align: center;
+                  }
+                  .container {
+                      width: 500px;
+                      background: #0d47a1;
+                      padding: 25px;
+                      margin: 40px auto;
+                      border-radius: 12px;
+                      box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+                      color: white;
+                  }
+                  .btn {
+                      display: inline-block;
+                      background: #ff3d00;
+                      padding: 14px 28px;
+                      text-decoration: none;
+                      color: white;
+                      border-radius: 6px;
+                      margin-top: 20px;
+                      font-weight: bold;
+                  }
+                  .btn:hover {
+                      background: #d32f2f;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h2>Reset Password</h2>
+                  <p>Anda menerima email ini karena ada permintaan untuk mereset password akun Sihedaf Anda.</p>
+                  <p>Silakan klik tombol di bawah ini untuk mereset password Anda.</p>
+                  <a href="${resetUrl}" class="btn">Reset Password</a>
+                  <p>Tautan ini akan kedaluwarsa dalam 5 menit.</p>
+                  <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
+              </div>
+          </body>
+      </html>
+    `;
+}
+
 export {
     generateEmailIndoTemplate,
     generateEmailEnglishTemplate,
     generateVerifEmail,
+    generateResetPasswordEmail,
 };
