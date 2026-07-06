@@ -1,8 +1,13 @@
 import jwt from "jsonwebtoken";
 
-const generateToken = (id, time = "1h") => {
-
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (payload, time = "1h") => {
+    // Jika payload sudah berupa object (seperti pas login), gunakan apa adanya
+    // Jika berupa primitive string/id (seperti pas forgot password), wrap ke dalam { id }
+    const signPayload = typeof payload === 'object' && payload !== null && !Array.isArray(payload) 
+        ? payload 
+        : { id: payload };
+        
+    return jwt.sign(signPayload, process.env.JWT_SECRET, {
         expiresIn: time,
     });
 };
