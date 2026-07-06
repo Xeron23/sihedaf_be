@@ -13,7 +13,15 @@ export function initSocket(server) {
 
   io.use((socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
+      // Cari token dari auth, query, atau header Authorization (Bearer)
+      let token = socket.handshake.auth?.token || socket.handshake.query?.token;
+      
+      if (!token && socket.handshake.headers?.authorization) {
+        const authHeader = socket.handshake.headers.authorization;
+        if (authHeader.startsWith("Bearer ")) {
+          token = authHeader.split(" ")[1];
+        }
+      }
 
       if (!token) {
         return next(new Error("Token missing"));

@@ -12,7 +12,7 @@ const validateCredentials =
         });
 
         if (validated.error) {
-            next(validated.error);
+            return next(validated.error);
         }
         next();
     };

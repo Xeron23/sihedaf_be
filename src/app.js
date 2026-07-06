@@ -69,11 +69,13 @@ class ExpressApplication {
         this.configureAssets();
         this.setupRoute();
         this.setupMiddlewares([
-            errorHandler,
             express.json(),
             express.urlencoded(),
             apicache.middleware("5 minutes"),
         ]);
+        
+        // PENTING: Error handler harus selalu di bawah routes
+        this.app.use(errorHandler);
 
         this.setupLibrary([
             process.env.NODE_ENV === "development" ? morgan("dev") : "",
