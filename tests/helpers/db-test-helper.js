@@ -42,15 +42,10 @@ export const testPrisma = createTestPrismaClient();
 
 const cleanupOrder = [
   'systemLog',
-  'attendance',
-  'equipmentHistory',
-  'gymCashflow',
-  'transaction',
-  'membership',
-  'equipment',
-  'membershipPackage',
-  'gymImage',
-  'gym',
+  'notification',
+  'ppgResult',
+  'measurement',
+  'device',
   'user'
 ];
 
