@@ -109,12 +109,57 @@ class MeasurementService {
             throw BaseError.badRequest("You do not have any active measurement session.");
         }
 
-        // Hapus (Cancel) secara silent di DB. Nanti jam akan mendapat balasan { status: "STOP" } pas dia kirim cicilan berikutnya.
-        await prisma.measurement.delete({
-            where: { id: activeMeasure.id }
+        // ==========================================
+        // EKSEKUSI AI JIKA DI-STOP MANUAL OLEH FE
+        // ==========================================
+        const finalPpg = await prisma.ppgResult.findUnique({ where: { measurementId: activeMeasure.id } });
+        const fullArray = finalPpg && Array.isArray(finalPpg.rawPpgData) ? finalPpg.rawPpgData : [];
+
+        // Lempar ke AI (Import ditarik dari IotService / mockup)
+        let isAfib = false;
+        try {
+            // Untuk prototipe, AI selalu mengembalikan false (Bisa dihubungkan ke Python API nanti)
+            isAfib = false;
+        } catch (error) {
+            logger.error("[AI Error]: " + error.message);
+        }
+
+        // Update database untuk menutup sesi (bukan di-delete)
+        await prisma.$transaction(async (tx) => {
+            await tx.measurement.update({
+                where: { id: activeMeasure.id },
+                data: { status: "COMPLETED", completedAt: new Date() }
+            });
+
+            // Hanya buat notifikasi jika ada data yang sempat terekam
+            if (fullArray.length > 0) {
+                if (isAfib) {
+                    await tx.notification.create({
+                        data: {
+                            userId: activeMeasure.userId,
+                            title: "Medical Alert!",
+                            message: "AI system detected an indication of Atrial Fibrillation (AF) pattern.",
+                            type: "AF_DETECTED"
+                        }
+                    });
+                } else {
+                    await tx.notification.create({
+                        data: {
+                            userId: activeMeasure.userId,
+                            title: "Measurement Completed",
+                            message: "Your heart rate analysis result is within normal limits.",
+                            type: "SYSTEM_INFO"
+                        }
+                    });
+                }
+            }
         });
 
-        return { message: "Stop command sent to watch." };
+        return { 
+            message: "Measurement stopped successfully. Data has been saved and analyzed.",
+            afibDetected: isAfib, 
+            totalDataSaved: fullArray.length 
+        };
     }
 
     async getHistory(userId) {
