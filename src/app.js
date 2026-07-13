@@ -21,6 +21,7 @@ import NotificationRoutes from "./domains/notification/notification.route.js";
 import IotRoutes from "./domains/iot/iot.route.js";
 import { initSocket } from "./config/socket.js";
 import { initMqtt } from "./config/mqtt.js";
+import { startSchedulers } from "./jobs/scheduler.js";
 
 class ExpressApplication {
     app;
@@ -126,6 +127,9 @@ class ExpressApplication {
                 logger.info(`🚀 Server running on port ${this.port}`);
             });
             
+            // Start background jobs
+            startSchedulers();
+
             return server;
         } catch (error) {
             logger.error("❌ Server failed to start:", error);
