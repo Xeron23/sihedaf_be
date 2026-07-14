@@ -233,6 +233,22 @@ class MeasurementService {
             where: whereClause
         });
 
+        // Hitung total AF (Atrial Fibrillation) di rentang waktu/filter saat ini
+        const totalAfib = await prisma.measurement.count({
+            where: {
+                ...whereClause,
+                resultClass: 1 // Class 1 adalah AFIB
+            }
+        });
+
+        // Hitung total Normal di rentang waktu/filter saat ini
+        const totalNormal = await prisma.measurement.count({
+            where: {
+                ...whereClause,
+                resultClass: 0 // Class 0 adalah Normal
+            }
+        });
+
         // Get the paginated data
         const data = await prisma.measurement.findMany({
             where: whereClause,
@@ -248,6 +264,10 @@ class MeasurementService {
                 currentPage: page,
                 totalPages: Math.ceil(total / limit),
                 limit: limit
+            },
+            summary: {
+                totalAfib: totalAfib,
+                totalNormal: totalNormal
             },
             data
         };
