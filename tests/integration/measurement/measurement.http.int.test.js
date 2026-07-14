@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import supertest from 'supertest';
-import { setupHttpIntegrationTest, teardownHttpIntegrationTest } from '../helpers/app-test-helper.js';
-import { testPrisma } from '../helpers/db-test-helper.js';
-import { generateToken } from '../../src/utils/jwtTokenConfig.js';
+import { setupHttpIntegrationTest, teardownHttpIntegrationTest } from '../../helpers/app-test-helper.js';
+import { testPrisma } from '../../helpers/db-test-helper.js';
+import { generateToken } from '../../../src/utils/jwtTokenConfig.js';
 import bcrypt from 'bcrypt';
 
 async function safeCleanup() {

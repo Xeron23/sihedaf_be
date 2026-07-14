@@ -87,6 +87,9 @@ model Measurement {
 
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  resultClass Int?
+  resultLabel String?
+  confidenceLevel Float?
 
   @@index([userId])
   @@index([deviceId])

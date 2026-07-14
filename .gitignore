@@ -2,3 +2,5 @@
 .env.docker
 check-docker.sh
 node_modules/
+app.log
+*.log

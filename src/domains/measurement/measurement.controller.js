@@ -24,7 +24,30 @@ class MeasurementController {
     }
     
     async getHistory(req, res) {
-        const data = await MeasurementService.getHistory(req.user.id);
+        // Ambil query param untuk pagination dan filter tanggal
+        const { page = 1, limit = 5, startDate, endDate } = req.query;
+        
+        const filters = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            startDate, // format YYYY-MM-DD
+            endDate    // format YYYY-MM-DD
+        };
+
+        const data = await MeasurementService.getHistory(req.user.id, filters);
+        return successResponse(res, data);
+    }
+
+    async getLatestMeasurement(req, res) {
+        const data = await MeasurementService.getLatestMeasurement(req.user.id);
+        return successResponse(res, data);
+    }
+
+    async getSignalsByTime(req, res) {
+        // Ambil query 'minutes', default ke 3 menit jika tidak dikirim (misal: ?minutes=6)
+        const minutes = parseInt(req.query.minutes) || 3; 
+
+        const data = await MeasurementService.getSignalsByTime(req.user.id, minutes);
         return successResponse(res, data);
     }
 }
