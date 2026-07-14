@@ -69,8 +69,11 @@ class MeasurementService {
         const device = user.device;
         const deviceNumber = device.deviceNumber;
 
-        if (device.status === "OFFLINE") {
-            throw BaseError.badRequest("Perangkat (Jam Pintar) sedang offline. Pastikan jam menyala dan terhubung ke internet sebelum memulai pengukuran.");
+        // Toleransi mutlak: Jika jam tidak ngabarin (polling) dalam 15 detik terakhir, tolak START
+        const threshold = new Date(Date.now() - 15 * 1000);
+        
+        if (device.status === "OFFLINE" || !device.lastSeen || device.lastSeen < threshold) {
+            throw BaseError.badRequest("Perangkat (Jam Pintar) sedang offline atau tidak merespons. Pastikan jam menyala dan terhubung ke internet sebelum memulai pengukuran.");
         }
 
         // 2. Cek apakah perangkat sedang mengukur

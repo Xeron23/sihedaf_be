@@ -3,9 +3,8 @@ import logger from "../utils/logger.js";
 
 export async function sweepOfflineDevices() {
     try {
-        // Toleransi waktu: 20 detik (karena polling jam tiap 5 detik, kita beri napas lebih panjang)
-        // Jika 20 detik (4x siklus polling) tidak ada kabar, baru anggap OFFLINE
-        const threshold = new Date(Date.now() - 20 * 1000);
+        // Toleransi waktu: 60 detik (1 menit) tidak ada kabar, baru anggap OFFLINE (Untuk label UX di Home Screen)
+        const threshold = new Date(Date.now() - 60 * 1000);
 
         // Update status menjadi OFFLINE untuk device yang lastSeen-nya lebih lama dari threshold
         // Tapi HANYA jika status saat ini masih ONLINE (menghindari update database berulang yang tidak perlu)

@@ -3,10 +3,10 @@ import logger from "../utils/logger.js";
 import { sweepOfflineDevices } from "./device-offline.jobs.js";
 
 export function startSchedulers() {
-    logger.info("[JOB] Device Offline Sweeper started (Cron: Tiap 1 Menit)");
+    logger.info("[JOB] Device Offline Sweeper started (Cron: Tiap 2 Menit)");
     
-    // Karena kita toleransi offline 20 detik, kita bisa menjalankan sweeper ini setiap menit (lebih efisien untuk CPU)
-    cron.schedule("* * * * *", async () => {
+    // Sweeper berjalan setiap 2 menit untuk membersihkan label database
+    cron.schedule("*/2 * * * *", async () => {
         try {
             await sweepOfflineDevices();
         } catch (e) {
