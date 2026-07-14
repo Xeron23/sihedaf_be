@@ -69,11 +69,11 @@ class MeasurementService {
         const device = user.device;
         const deviceNumber = device.deviceNumber;
 
-        // Toleransi mutlak: Jika jam tidak ngabarin (polling) dalam 15 detik terakhir, tolak START
-        const threshold = new Date(Date.now() - 15 * 1000);
+        // Toleransi jaringan: Jika jam tidak ngabarin (polling) dalam 30 detik terakhir (6x siklus), tolak START
+        const threshold = new Date(Date.now() - 30 * 1000);
         
         if (device.status === "OFFLINE" || !device.lastSeen || device.lastSeen < threshold) {
-            throw BaseError.badRequest("Perangkat (Jam Pintar) sedang offline atau tidak merespons. Pastikan jam menyala dan terhubung ke internet sebelum memulai pengukuran.");
+            throw BaseError.badRequest("Perangkat (Jam Pintar) sedang offline atau koneksi tidak stabil. Pastikan jam menyala dan terhubung ke internet sebelum memulai pengukuran.");
         }
 
         // 2. Cek apakah perangkat sedang mengukur
