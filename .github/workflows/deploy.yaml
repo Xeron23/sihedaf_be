@@ -70,6 +70,8 @@ jobs:
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               -e PORT="${{ secrets.PORT }}" \
+              -e FE_URL="${{ secrets.FE_URL }}" \
+              -e BE_URL="${{ secrets.BE_URL }}" \
               -e EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
               -e EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
               --restart unless-stopped \
