@@ -27,5 +27,10 @@ class MeasurementController {
         const data = await MeasurementService.getHistory(req.user.id);
         return successResponse(res, data);
     }
+
+    async getLatestMeasurement(req, res) {
+        const data = await MeasurementService.getLatestMeasurement(req.user.id);
+        return successResponse(res, data);
+    }
 }
 export default new MeasurementController();

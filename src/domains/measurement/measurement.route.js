@@ -26,6 +26,7 @@ class MeasurementRoutes extends BaseRoutes {
             tryCatch(MeasurementController.stopMeasurement)
         ]);
         this.router.get("/history", tryCatch(MeasurementController.getHistory));
+        this.router.get("/latest", tryCatch(MeasurementController.getLatestMeasurement));
     }
 }
 export default new MeasurementRoutes().router;

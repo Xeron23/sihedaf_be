@@ -211,5 +211,23 @@ class MeasurementService {
             orderBy: { requestedAt: "desc" }
         });
     }
+
+    async getLatestMeasurement(userId) {
+        // Ambil 1 baris paling baru yang statusnya COMPLETED (supaya dapat result AI)
+        const latest = await prisma.measurement.findFirst({
+            where: { 
+                userId, 
+                status: "COMPLETED" 
+            },
+            include: { ppgResult: true, device: true },
+            orderBy: { completedAt: "desc" }
+        });
+
+        if (!latest) {
+            return null; // Return null jika belum pernah ada riwayat
+        }
+
+        return latest;
+    }
 }
 export default new MeasurementService();
