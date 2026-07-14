@@ -139,11 +139,11 @@ class AuthController {
         const response = await AuthService.verifyResetPassword(token);
 
         if (response.status !== 200) {
-            return res.redirect(`${process.env.FE_URL}/reset-password?verify=failed&message=${response.message}`);
+            return res.redirect(`${process.env.FE_URL}/lupa-kata-sandi?verify=failed&message=${response.message}`);
         }
         console.log(response);
         
-        return res.redirect(`${process.env.FE_URL}/reset-password?token=${response.data}`);
+        return res.redirect(`${process.env.FE_URL}/lupa-kata-sandi?token=${response.data}`);
     }
 
     /**
