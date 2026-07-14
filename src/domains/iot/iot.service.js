@@ -91,49 +91,88 @@ class IotService {
         const fullArray = finalPpg && Array.isArray(finalPpg.rawPpgData) ? finalPpg.rawPpgData : [];
 
         // Lempar ke AI
-        const isAfib = await this.detectAfibAlgorithm(fullArray);
+        let predictionClass = 0;
+        let predictionLabel = "Normal (N)";
+        let confidenceLevel = 0.0;
+        let isAfib = false;
+        
+        try {
+            logger.info(`[AI] Mengirim ${fullArray.length} data PPG ke AI...`);
+            // Note: Gunakan IP VPN atau localhost jika satu server
+            const aiResponse = await axios.post("http://147.139.214.1:8000/predict", {
+                raw_ppg: fullArray,
+                sampling_rate: 50 // Sesuaikan jika ada sampling rate berbeda dari jam
+            }, { timeout: 10000 });
+            
+            const aiData = aiResponse.data;
+            if(aiData && aiData.status === "success") {
+                predictionClass = aiData.prediction_class;
+                predictionLabel = aiData.prediction_label;
+                
+                // Ambil confidence level dari key yang berawalan dari label
+                const labelKey = predictionLabel.split(" ")[0]; // "Normal", "AFIB", "Atrial"
+                confidenceLevel = aiData.confidence[labelKey] || aiData.confidence["Normal"] || 0;
+                
+                isAfib = (predictionClass === 1); // 1 = AFIB
+                logger.info(`[AI] Hasil: ${predictionLabel} (Confidence: ${confidenceLevel})`);
+            }
+        } catch (error) {
+            logger.error(`[AI Error]: Gagal menghubungi layanan AI - ${error.message}`);
+            // Fallback default jika AI mati
+        }
 
         // Update database untuk menutup sesi
         const result = await prisma.$transaction(async (tx) => {
             await tx.measurement.update({
                 where: { id: activeMeasure.id },
-                data: { status: "COMPLETED", completedAt: new Date() }
+                data: { 
+                    status: "COMPLETED", 
+                    completedAt: new Date(),
+                    resultClass: predictionClass,
+                    resultLabel: predictionLabel,
+                    confidenceLevel: confidenceLevel
+                }
             });
 
-            if (isAfib) {
+            if (predictionClass === 1) { // AFIB
                 await tx.notification.create({
                     data: {
                         userId: activeMeasure.userId,
                         title: "Medical Alert!",
-                        message: "AI system detected an indication of Atrial Fibrillation (AF) pattern.",
+                        message: "Sistem AI mendeteksi indikasi Atrial Fibrillation (AFIB). Silakan konsultasi dengan dokter Anda.",
                         type: "AF_DETECTED"
                     }
                 });
-            } else {
+            } else if (predictionClass === 2) { // AFL
                 await tx.notification.create({
                     data: {
                         userId: activeMeasure.userId,
-                        title: "Measurement Completed",
-                        message: "Your heart rate analysis result is within normal limits.",
+                        title: "Medical Alert!",
+                        message: "Sistem AI mendeteksi indikasi Atrial Flutter (AFL). Silakan perhatikan kondisi Anda.",
+                        type: "AF_DETECTED"
+                    }
+                });
+            } else { // Normal (0)
+                await tx.notification.create({
+                    data: {
+                        userId: activeMeasure.userId,
+                        title: "Pengukuran Selesai",
+                        message: "Hasil analisis detak jantung Anda berada dalam batas Normal.",
                         type: "SYSTEM_INFO"
                     }
                 });
             }
 
-            return { status: "STOP", message: "Measurement completed", afibDetected: isAfib, totalData: fullArray.length };
+            return { 
+                status: "STOP", 
+                message: "Measurement completed", 
+                resultClass: predictionClass, 
+                resultLabel: predictionLabel,
+                totalData: fullArray.length 
+            };
         });
 
         return result;
-    }
-
-    async detectAfibAlgorithm(rawPpgData) {
-        try {
-            // Untuk prototipe, return false
-            return false;
-        } catch (error) {
-            console.error("[AI Error]:", error.message);
-            return false;
-        }
     }
 }
 export default new IotService();
