@@ -33,12 +33,11 @@ class MeasurementController {
         return successResponse(res, data);
     }
 
-    async getPpgSignal(req, res) {
-        const { id } = req.params;
-        // Ambil query 'seconds', default ke 3 detik jika tidak dikirim (misal: ?seconds=6)
-        const seconds = parseInt(req.query.seconds) || 3; 
+    async getSignalsByTime(req, res) {
+        // Ambil query 'minutes', default ke 3 menit jika tidak dikirim (misal: ?minutes=6)
+        const minutes = parseInt(req.query.minutes) || 3; 
 
-        const data = await MeasurementService.getPpgSignalSubset(id, req.user.id, seconds);
+        const data = await MeasurementService.getSignalsByTime(req.user.id, minutes);
         return successResponse(res, data);
     }
 }

@@ -230,36 +230,39 @@ class MeasurementService {
         return latest;
     }
 
-    async getPpgSignalSubset(measurementId, userId, seconds) {
-        // Validasi kepemilikan measurement
-        const measurement = await prisma.measurement.findFirst({
-            where: { id: measurementId, userId: userId },
-            include: { ppgResult: true }
+    async getSignalsByTime(userId, minutes) {
+        // 1. Hitung threshold waktu batas mundur
+        const thresholdDate = new Date(Date.now() - (minutes * 60 * 1000));
+
+        // 2. Ambil semua measurement milik user yang selesai (COMPLETED) di dalam rentang waktu tersebut
+        const measurements = await prisma.measurement.findMany({
+            where: {
+                userId: userId,
+                status: "COMPLETED",
+                completedAt: {
+                    gte: thresholdDate // Greater than or equal to batas waktu mundur
+                }
+            },
+            include: { ppgResult: true },
+            orderBy: { completedAt: "asc" } // Urutkan dari yang paling lama ke yang paling baru
         });
 
-        if (!measurement) {
-            throw BaseError.notFound("Measurement session not found or you don't have access.");
+        // 3. Gabungkan (flatten) semua rawPpgData yang didapat di rentang waktu tersebut
+        let combinedSignals = [];
+        let totalSessions = 0;
+
+        for (const m of measurements) {
+            if (m.ppgResult && Array.isArray(m.ppgResult.rawPpgData)) {
+                combinedSignals = combinedSignals.concat(m.ppgResult.rawPpgData);
+                totalSessions += 1;
+            }
         }
-
-        if (!measurement.ppgResult || !Array.isArray(measurement.ppgResult.rawPpgData)) {
-            return { rawPpgData: [], seconds_returned: 0 };
-        }
-
-        const fullArray = measurement.ppgResult.rawPpgData;
-        const SAMPLING_RATE = 50; // 50 titik per detik (Hz)
-        const targetLength = seconds * SAMPLING_RATE;
-
-        // Jika data kurang dari yang diminta, kembalikan semua yang ada.
-        // Jika lebih, kita potong (slice) sesuai jumlah detik yang diminta (dari awal data).
-        const slicedArray = fullArray.slice(0, targetLength);
 
         return {
-            measurementId: measurement.id,
-            status: measurement.status,
-            total_data_points: fullArray.length,
-            sliced_data_points: slicedArray.length,
-            seconds_returned: slicedArray.length / SAMPLING_RATE,
-            rawPpgData: slicedArray
+            timeframe_minutes: minutes,
+            sessions_found: totalSessions,
+            total_points: combinedSignals.length,
+            rawPpgData: combinedSignals
         };
     }
 }
