@@ -229,5 +229,38 @@ class MeasurementService {
 
         return latest;
     }
+
+    async getPpgSignalSubset(measurementId, userId, seconds) {
+        // Validasi kepemilikan measurement
+        const measurement = await prisma.measurement.findFirst({
+            where: { id: measurementId, userId: userId },
+            include: { ppgResult: true }
+        });
+
+        if (!measurement) {
+            throw BaseError.notFound("Measurement session not found or you don't have access.");
+        }
+
+        if (!measurement.ppgResult || !Array.isArray(measurement.ppgResult.rawPpgData)) {
+            return { rawPpgData: [], seconds_returned: 0 };
+        }
+
+        const fullArray = measurement.ppgResult.rawPpgData;
+        const SAMPLING_RATE = 50; // 50 titik per detik (Hz)
+        const targetLength = seconds * SAMPLING_RATE;
+
+        // Jika data kurang dari yang diminta, kembalikan semua yang ada.
+        // Jika lebih, kita potong (slice) sesuai jumlah detik yang diminta (dari awal data).
+        const slicedArray = fullArray.slice(0, targetLength);
+
+        return {
+            measurementId: measurement.id,
+            status: measurement.status,
+            total_data_points: fullArray.length,
+            sliced_data_points: slicedArray.length,
+            seconds_returned: slicedArray.length / SAMPLING_RATE,
+            rawPpgData: slicedArray
+        };
+    }
 }
 export default new MeasurementService();

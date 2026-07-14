@@ -32,5 +32,14 @@ class MeasurementController {
         const data = await MeasurementService.getLatestMeasurement(req.user.id);
         return successResponse(res, data);
     }
+
+    async getPpgSignal(req, res) {
+        const { id } = req.params;
+        // Ambil query 'seconds', default ke 3 detik jika tidak dikirim (misal: ?seconds=6)
+        const seconds = parseInt(req.query.seconds) || 3; 
+
+        const data = await MeasurementService.getPpgSignalSubset(id, req.user.id, seconds);
+        return successResponse(res, data);
+    }
 }
 export default new MeasurementController();
