@@ -24,7 +24,17 @@ class MeasurementController {
     }
     
     async getHistory(req, res) {
-        const data = await MeasurementService.getHistory(req.user.id);
+        // Ambil query param untuk pagination dan filter tanggal
+        const { page = 1, limit = 5, startDate, endDate } = req.query;
+        
+        const filters = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            startDate, // format YYYY-MM-DD
+            endDate    // format YYYY-MM-DD
+        };
+
+        const data = await MeasurementService.getHistory(req.user.id, filters);
         return successResponse(res, data);
     }
 

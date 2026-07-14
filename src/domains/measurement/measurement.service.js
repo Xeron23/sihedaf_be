@@ -204,12 +204,53 @@ class MeasurementService {
         };
     }
 
-    async getHistory(userId) {
-        return await prisma.measurement.findMany({
-            where: { userId },
-            include: { ppgResult: true, device: true },
-            orderBy: { requestedAt: "desc" }
+    async getHistory(userId, filters) {
+        const { page, limit, startDate, endDate } = filters;
+        
+        // Setup pagination
+        const skip = (page - 1) * limit;
+
+        // Setup query where clauses
+        let whereClause = { userId };
+
+        // Handle date filtering
+        if (startDate && endDate) {
+            // Jika ada range tanggal start - end
+            whereClause.completedAt = {
+                gte: new Date(`${startDate}T00:00:00.000Z`),
+                lte: new Date(`${endDate}T23:59:59.999Z`)
+            };
+        } else if (startDate && !endDate) {
+            // Jika hanya 1 tanggal spesifik (hanya kirim startDate)
+            whereClause.completedAt = {
+                gte: new Date(`${startDate}T00:00:00.000Z`),
+                lte: new Date(`${startDate}T23:59:59.999Z`)
+            };
+        }
+
+        // Get total records matching the criteria (for pagination metadata)
+        const total = await prisma.measurement.count({
+            where: whereClause
         });
+
+        // Get the paginated data
+        const data = await prisma.measurement.findMany({
+            where: whereClause,
+            include: { ppgResult: true, device: true },
+            orderBy: { requestedAt: "desc" },
+            skip,
+            take: limit
+        });
+
+        return {
+            metadata: {
+                totalData: total,
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+                limit: limit
+            },
+            data
+        };
     }
 
     async getLatestMeasurement(userId) {
