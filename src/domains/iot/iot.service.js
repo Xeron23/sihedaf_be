@@ -99,7 +99,7 @@ class IotService {
         try {
             logger.info(`[AI] Mengirim ${fullArray.length} data PPG ke AI...`);
             // Note: Gunakan IP VPN atau localhost jika satu server
-            const aiResponse = await axios.post("http://147.139.214.1:8000/predict", {
+            const aiResponse = await axios.post("http://192.168.88.3:8000/predict", {
                 raw_ppg: fullArray,
                 sampling_rate: 50 // Sesuaikan jika ada sampling rate berbeda dari jam
             }, { timeout: 10000 });

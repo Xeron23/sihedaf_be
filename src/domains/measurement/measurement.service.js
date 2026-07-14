@@ -130,7 +130,7 @@ class MeasurementService {
         if (fullArray.length >= 150) { // Butuh minimal 3 detik (50hz x 3 = 150) data untuk dianalisis
             try {
                 logger.info(`[AI] Mengirim ${fullArray.length} data PPG ke AI (Manual Stop)...`);
-                const aiResponse = await axios.post("http://147.139.214.1:8000/predict", {
+                const aiResponse = await axios.post("http://192.168.88.3:8000/predict", {
                     raw_ppg: fullArray,
                     sampling_rate: 50
                 }, { timeout: 10000 });
