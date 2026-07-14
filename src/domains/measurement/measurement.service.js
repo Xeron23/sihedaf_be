@@ -1,6 +1,7 @@
 import prisma from "../../config/db.js";
 import BaseError from "../../base_classes/base-error.js";
 import logger from "../../utils/logger.js";
+import axios from "axios";
 
 class MeasurementService {
     
@@ -68,6 +69,10 @@ class MeasurementService {
         const device = user.device;
         const deviceNumber = device.deviceNumber;
 
+        if (device.status === "OFFLINE") {
+            throw BaseError.badRequest("Perangkat (Jam Pintar) sedang offline. Pastikan jam menyala dan terhubung ke internet sebelum memulai pengukuran.");
+        }
+
         // 2. Cek apakah perangkat sedang mengukur
         const activeMeasure = await prisma.measurement.findFirst({
             where: { deviceId: device.id, status: "IN_PROGRESS" }
@@ -115,30 +120,63 @@ class MeasurementService {
         const finalPpg = await prisma.ppgResult.findUnique({ where: { measurementId: activeMeasure.id } });
         const fullArray = finalPpg && Array.isArray(finalPpg.rawPpgData) ? finalPpg.rawPpgData : [];
 
-        // Lempar ke AI (Import ditarik dari IotService / mockup)
-        let isAfib = false;
-        try {
-            // Untuk prototipe, AI selalu mengembalikan false (Bisa dihubungkan ke Python API nanti)
-            isAfib = false;
-        } catch (error) {
-            logger.error("[AI Error]: " + error.message);
+        let predictionClass = 0;
+        let predictionLabel = "Normal (N)";
+        let confidenceLevel = 0.0;
+        
+        if (fullArray.length >= 150) { // Butuh minimal 3 detik (50hz x 3 = 150) data untuk dianalisis
+            try {
+                logger.info(`[AI] Mengirim ${fullArray.length} data PPG ke AI (Manual Stop)...`);
+                const aiResponse = await axios.post("http://147.139.214.1:8000/predict", {
+                    raw_ppg: fullArray,
+                    sampling_rate: 50
+                }, { timeout: 10000 });
+                
+                const aiData = aiResponse.data;
+                if(aiData && aiData.status === "success") {
+                    predictionClass = aiData.prediction_class;
+                    predictionLabel = aiData.prediction_label;
+                    const labelKey = predictionLabel.split(" ")[0];
+                    confidenceLevel = aiData.confidence[labelKey] || aiData.confidence["Normal"] || 0;
+                }
+            } catch (error) {
+                logger.error(`[AI Error] (Manual Stop): Gagal menghubungi layanan AI - ${error.message}`);
+            }
+        } else if (fullArray.length > 0) {
+            logger.warn(`[AI] Data terlalu pendek (${fullArray.length} titik) untuk dianalisa AI.`);
+            predictionLabel = "Not Enough Data";
         }
 
         // Update database untuk menutup sesi (bukan di-delete)
         await prisma.$transaction(async (tx) => {
             await tx.measurement.update({
                 where: { id: activeMeasure.id },
-                data: { status: "COMPLETED", completedAt: new Date() }
+                data: { 
+                    status: "COMPLETED", 
+                    completedAt: new Date(),
+                    resultClass: predictionClass,
+                    resultLabel: predictionLabel,
+                    confidenceLevel: confidenceLevel
+                }
             });
 
-            // Hanya buat notifikasi jika ada data yang sempat terekam
-            if (fullArray.length > 0) {
-                if (isAfib) {
+            // Hanya buat notifikasi jika ada data yang sempat terekam (cukup untuk diolah)
+            if (fullArray.length >= 150) {
+                if (predictionClass === 1) { // AFIB
                     await tx.notification.create({
                         data: {
                             userId: activeMeasure.userId,
                             title: "Medical Alert!",
-                            message: "AI system detected an indication of Atrial Fibrillation (AF) pattern.",
+                            message: "Sistem AI mendeteksi indikasi Atrial Fibrillation (AFIB).",
+                            type: "AF_DETECTED"
+                        }
+                    });
+                } else if (predictionClass === 2) { // AFL
+                    await tx.notification.create({
+                        data: {
+                            userId: activeMeasure.userId,
+                            title: "Medical Alert!",
+                            message: "Sistem AI mendeteksi indikasi Atrial Flutter (AFL).",
                             type: "AF_DETECTED"
                         }
                     });
@@ -146,8 +184,8 @@ class MeasurementService {
                     await tx.notification.create({
                         data: {
                             userId: activeMeasure.userId,
-                            title: "Measurement Completed",
-                            message: "Your heart rate analysis result is within normal limits.",
+                            title: "Pengukuran Selesai",
+                            message: "Hasil analisis detak jantung Anda berada dalam batas Normal.",
                             type: "SYSTEM_INFO"
                         }
                     });
@@ -157,7 +195,8 @@ class MeasurementService {
 
         return { 
             message: "Measurement stopped successfully. Data has been saved and analyzed.",
-            afibDetected: isAfib, 
+            resultClass: predictionClass, 
+            resultLabel: predictionLabel,
             totalDataSaved: fullArray.length 
         };
     }
