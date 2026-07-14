@@ -210,7 +210,7 @@ class MeasurementService {
         // Setup pagination
         const skip = (page - 1) * limit;
 
-        // Setup query where clauses
+        // Setup query where clauses (untuk data)
         let whereClause = { userId };
 
         // Handle date filtering
@@ -229,24 +229,26 @@ class MeasurementService {
         }
 
         // Get total records matching the criteria (for pagination metadata)
-        const total = await prisma.measurement.count({
+        const totalFiltered = await prisma.measurement.count({
             where: whereClause
         });
 
-        // Hitung total AF (Atrial Fibrillation) di rentang waktu/filter saat ini
-        const totalAfib = await prisma.measurement.count({
-            where: {
-                ...whereClause,
-                resultClass: 1 // Class 1 adalah AFIB
-            }
+        // ==========================================
+        // SUMMARY TOTALS (TIDAK TERPENGARUH TANGGAL)
+        // Header Dashboard butuh total akumulasi sepanjang waktu untuk user ini
+        // ==========================================
+        const summaryWhereClause = { userId, status: "COMPLETED" };
+
+        const totalOverallData = await prisma.measurement.count({
+            where: summaryWhereClause
         });
 
-        // Hitung total Normal di rentang waktu/filter saat ini
-        const totalNormal = await prisma.measurement.count({
-            where: {
-                ...whereClause,
-                resultClass: 0 // Class 0 adalah Normal
-            }
+        const totalOverallAfib = await prisma.measurement.count({
+            where: { ...summaryWhereClause, resultClass: 1 }
+        });
+
+        const totalOverallNormal = await prisma.measurement.count({
+            where: { ...summaryWhereClause, resultClass: 0 }
         });
 
         // Get the paginated data
@@ -259,15 +261,16 @@ class MeasurementService {
         });
 
         return {
-            metadata: {
-                totalData: total,
-                currentPage: page,
-                totalPages: Math.ceil(total / limit),
-                limit: limit
-            },
             summary: {
-                totalAfib: totalAfib,
-                totalNormal: totalNormal
+                totalData: totalOverallData,
+                totalAfib: totalOverallAfib,
+                totalNormal: totalOverallNormal
+            },
+            metadata: {
+                totalFiltered: totalFiltered,
+                currentPage: page,
+                totalPages: Math.ceil(totalFiltered / limit),
+                limit: limit
             },
             data
         };
