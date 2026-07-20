@@ -20,8 +20,10 @@ menekan tombol "Mulai Pengukuran" di aplikasi HP.
 
 Method  : GET
 URL     : /device/<MAC_ADDRESS_JAM>/poll
-Contoh  : /device/A1B2C3D4E5F6/poll
+Contoh  : /device/A1B2C3D4E5F6/poll?battery=85
 Header  : Connection: keep-alive
+
+CATATAN: Anda dapat mengirimkan status baterai jam saat ini (0-100) melalui query parameter "battery" agar termonitor di sisi server.
 
 Response Server:
 a. Jika BELUM ada perintah:

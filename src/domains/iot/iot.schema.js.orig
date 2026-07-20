@@ -16,11 +16,3 @@ export const iotParamsSchema = Joi.object({
         'string.empty': 'deviceNumber cannot be empty'
     })
 });
-
-export const iotQuerySchema = Joi.object({
-    battery: Joi.number().min(0).max(100).optional().messages({
-        'number.base': 'battery query parameter must be a number',
-        'number.min': 'battery cannot be less than 0',
-        'number.max': 'battery cannot be more than 100'
-    })
-});

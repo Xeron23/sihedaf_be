@@ -6,12 +6,22 @@ import logger from "../../utils/logger.js";
 
 class IotService {
     // Dipanggil oleh Jam Pintar untuk mengecek apakah ada perintah (Polling tiap 5 detik)
-    async checkPendingTask(deviceNumber) {
+    async checkPendingTask(deviceNumber, batteryLevel) {
+        let updateData = { status: "ONLINE", lastSeen: new Date() };
+        if (batteryLevel !== undefined && batteryLevel !== null) {
+            updateData.batteryLevel = parseInt(batteryLevel);
+        }
+
         // Otomatis daftarkan/update status perangkat jika memanggil poll
         const device = await prisma.device.upsert({
             where: { deviceNumber },
-            update: { status: "ONLINE", lastSeen: new Date() },
-            create: { deviceNumber, status: "ONLINE", lastSeen: new Date() }
+            update: updateData,
+            create: { 
+                deviceNumber, 
+                status: "ONLINE", 
+                lastSeen: new Date(),
+                batteryLevel: batteryLevel ? parseInt(batteryLevel) : null 
+            }
         });
 
         // Cari pengukuran IN_PROGRESS

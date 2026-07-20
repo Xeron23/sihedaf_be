@@ -36,27 +36,27 @@ model SystemLog {
   device      String
   action      String
   method      String
-  description String @db.Text
+  description String   @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model User {
-  id           Int         @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   fullname     String
-  email        String      @unique
+  email        String  @unique
   password     String
   profileImage String?
-  role         Role        @default(USER)
-  deviceId     String?     @unique
+  role         Role    @default(USER)
+  deviceId     String? @unique
 
-  logins       SystemLog[]
-  measurements Measurement[]
+  logins        SystemLog[]
+  measurements  Measurement[]
   notifications Notification[]
-  device       Device?     @relation(fields: [deviceId], references: [id])
+  device        Device?        @relation(fields: [deviceId], references: [id])
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Device {
@@ -64,13 +64,14 @@ model Device {
   deviceNumber String       @unique
   status       DeviceStatus @default(OFFLINE)
   lastSeen     DateTime?
+  batteryLevel Int?
 
   user         User?
   measurements Measurement[]
   ppgResults   PpgResult[]
 
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Measurement {
@@ -81,14 +82,14 @@ model Measurement {
   requestedAt DateTime          @default(now())
   completedAt DateTime?
 
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  device      Device            @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  ppgResult   PpgResult?
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device    Device     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  ppgResult PpgResult?
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  resultClass Int?
-  resultLabel String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  resultClass     Int?
+  resultLabel     String?
   confidenceLevel Float?
 
   @@index([userId])
@@ -96,17 +97,17 @@ model Measurement {
 }
 
 model PpgResult {
-  id            Int         @id @default(autoincrement())
-  measurementId Int         @unique
+  id            Int      @id @default(autoincrement())
+  measurementId Int      @unique
   deviceId      String
-  rawPpgData    Json        // Store array of PPG values
-  measuredAt    DateTime    @default(now())
+  rawPpgData    Json // Store array of PPG values
+  measuredAt    DateTime @default(now())
 
-  measurement   Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
-  device        Device      @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  measurement Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  device      Device      @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([measurementId])
   @@index([deviceId])
@@ -118,14 +119,14 @@ enum NotificationType {
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  title     String
-  message   String   @db.Text
-  type      NotificationType @default(SYSTEM_INFO)
-  isRead    Boolean  @default(false)
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id      Int              @id @default(autoincrement())
+  userId  Int
+  title   String
+  message String           @db.Text
+  type    NotificationType @default(SYSTEM_INFO)
+  isRead  Boolean          @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

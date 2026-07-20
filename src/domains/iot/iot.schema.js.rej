@@ -1,0 +1,10 @@
+--- iot.schema.js
++++ iot.schema.js
+@@ -10,3 +10,7 @@
+         'string.empty': 'deviceNumber cannot be empty'
+     })
+ });
++
++export const iotQuerySchema = Joi.object({
++    battery: Joi.number().min(0).max(100).optional()
++});

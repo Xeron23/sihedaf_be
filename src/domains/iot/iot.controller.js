@@ -4,7 +4,8 @@ import IotService from "./iot.service.js";
 class IotController {
     async pollTask(req, res) {
         const { deviceNumber } = req.params;
-        const data = await IotService.checkPendingTask(deviceNumber);
+        const { battery } = req.query;
+        const data = await IotService.checkPendingTask(deviceNumber, battery);
         return successResponse(res, data);
     }
 
